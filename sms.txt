@@ -1,0 +1,11 @@
+account_sid = 'AC3231219209b9b88aade6f5bc4de01706'
+auth_token = '[AuthToken]'
+client = Client(account_sid, auth_token)
+
+verification_check = client.verify \
+    .v2 \
+    .services('VA3025f99e5ba00e119a402d93928f2d6d') \
+    .verification_checks \
+    .create(to='+919106801951', code='[Code]')
+
+print(verification_check.status)

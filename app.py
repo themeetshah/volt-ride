@@ -9,12 +9,17 @@ import base64
 from werkzeug.utils import secure_filename
 import firebase_admin
 from firebase_admin import credentials, firestore, storage
-from werkzeug.security import generate_password_hash
+#location
 import time
+from werkzeug.security import generate_password_hash
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}
-app.secret_key = '1952'  # Make sure to set a secret key
+app.secret_key = os.getenv('SECRET_KEY')  # Make sure to set a secret key
 
 app.config['UPLOAD_FOLDER'] = 'uploads'
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
@@ -45,8 +50,8 @@ def generate_otp():
 # Send OTP via Email using App Password
 def send_otp_via_email(email, otp, name):
     try:
-        sender_email = "voltride.infinite@gmail.com"
-        app_password = "dvgn utdq phba edmv"  # Use the generated app password
+        sender_email = os.getenv('EMAIL_SENDER')
+        app_password = os.getenv('EMAIL_PASSWORD')
         subject = "Volt Ride OTP"
              # HTML message body with OTP styled in bold and custom color
         # HTML message body with OTP styled in bold and custom color
@@ -216,8 +221,7 @@ def dashboard():
         session['station-id']=station['station-id']
         return render_template('admin_dashboard.html')
     elif session['role']=='user':
-        # return render_template('user_dashboard.html')
-        return redirect(url_for('vehicles'))
+        return render_template('user_dashboard.html')
 
 @app.route('/about', methods=['GET', 'POST'])
 def about():
@@ -244,7 +248,6 @@ def login():
         email = request.form.get("email")
         password = request.form.get("password")
 
-        print(email)
         # Fetch admin details from MySQL
         cursor.execute("SELECT * FROM user WHERE email = %s", (email,))
         user = cursor.fetchone()
@@ -254,7 +257,6 @@ def login():
         if user and user["password"] == password:  # Validate password without hashing
             session["email_id"] = user["email"]
             session["role"] = user["role"]
-            session["user_id"] = user["user-id"]
             role = user["role"]
             if role:
                 if role == 'master':
@@ -269,28 +271,33 @@ def login():
 @app.route('/vehicle')
 def vehicles():
     try:
-        if session['role'] == 'master':
-            cursor.execute("""
-                SELECT v.`v-id`, v.`name`, v.`reg-plate`, v.`status`, s.`name` as 'station_name'
-                FROM vehicle v
-                JOIN stations s ON v.`station-id` = s.`station-id`
-            """)
-            vehicles_data = cursor.fetchall()
+        cursor.execute("""
+            SELECT v.`v-id`, v.`name`, v.`reg-plate`, v.`status`, s.`name` as 'station_name'
+            FROM vehicle v
+            JOIN stations s ON v.`station-id` = s.`station-id`
+        """)
+        vehicles_data = cursor.fetchall()
 
-            return render_template('vehicle_details.html', vehicles=vehicles_data)
-        elif session['role'] == 'user':
-            cursor.execute("""
-                SELECT v.`v-id`, v.`name`, v.battery, v.`reg-plate`, v.`status`, s.`name` as 'station_name'
-                FROM vehicle v
-                JOIN stations s WHERE v.status='Available'
-            """)
-            vehicles_data = cursor.fetchall()
-
-            return render_template('user_dashboard.html', vehicles=vehicles_data)
+        return render_template('vehicle_details.html', vehicles=vehicles_data)
     except mysql.connector.Error as err:
         print("MySQL Error:", err)
         flash("Failed to fetch vehicle data", 'danger')
         return render_template('vehicle_details.html', vehicles=[])
+
+@app.route('/api/vehicles/<station_id>', methods=['GET'])
+def get_vehicles(station_id):
+    try:
+        cursor.execute("""
+            SELECT v.`v-id`, v.`name`, v.`reg-plate`, v.`battery`, v.`status`, s.`name` as 'station_name'
+            FROM vehicle v
+            JOIN stations s ON v.`station-id` = s.`station-id`
+            WHERE s.`station-id` = %s
+        """, (station_id,))
+        vehicles_data = cursor.fetchall()
+        return jsonify(vehicles_data)
+    except mysql.connector.Error as err:
+        print("MySQL Error:", err)
+        return jsonify({"error": "Failed to fetch vehicle data"}), 500
 
 @app.route('/vehicle/edit/<int:vehicle_id>', methods=['GET', 'POST'])
 def edit_vehicle(vehicle_id):
@@ -334,6 +341,23 @@ def edit_vehicle(vehicle_id):
         flash("Failed to edit vehicle", 'danger')
         return redirect(url_for('vehicles'))
 
+@app.route('/add-vehicle', methods=['GET', 'POST'])
+def add_vehicle():
+    if request.method == 'POST':
+        reg_plate = request.form['reg_plate']
+        name = request.form['name']
+        battery = float(request.form['battery'])
+        station_id = int(request.form['station_id'])
+        status = request.form['status']
+
+        # Insert into database
+        query = "INSERT INTO vehicle (reg-plate, name, battery, station-id, status) VALUES (%s, %s, %s, %s, %s)"
+        cursor.execute(query, (reg_plate, name, battery, station_id, status))
+        db.commit()
+
+        return redirect('/add-vehicle')
+
+    return render_template('add_vehicle.html')
 
 @app.route('/vehicle/delete/<int:vehicle_id>')
 def delete_vehicle(vehicle_id):
@@ -397,9 +421,219 @@ def profile():
 
     # Get Ride History
     cursor.execute("SELECT * FROM ride WHERE `user-id` = (SELECT `user-id` from user WHERE `email` = %s)", (email,))
-    rides = cursor.fetchall()
+    rides = cursor.fetchone()
 
     return render_template('profile.html', user=user, rides=rides)
+
+
+
+@app.route('/location')
+def location():
+    return render_template('location.html')
+
+# Define geofence boundaries (example)
+GEOFENCE_CENTER = (23.15462, 72.66685)  # Example center coordinates
+GEOFENCE_RADIUS = 5000  # 5 km
+
+# Store tracking info
+user_tracking = {}
+
+def is_outside_geofence(lat, lon):
+    """Check if the user is outside geofence"""
+    from geopy.distance import geodesic
+    distance = geodesic((lat, lon), GEOFENCE_CENTER).km
+    return distance > (GEOFENCE_RADIUS / 1000)  # Convert meters to km
+
+
+@app.route('/track', methods=['POST'])
+def track_location():
+    """Track user location and apply penalty if needed"""
+    data = request.json
+    user_id = data['user_id']
+    lat, lon = data['lat'], data['lon']
+    
+    if user_id not in user_tracking:
+        user_tracking[user_id] = {
+            'start_time': time.time(),
+            'inside_geofence': True,
+            'penalty_start': None,
+            'distance': 0,
+            'total_cost': 0,
+            'cost_per_km': 1.50
+        }
+    
+    tracking = user_tracking[user_id]
+    
+    # Check if user is outside the geofence
+    if is_outside_geofence(lat, lon):
+        if tracking['inside_geofence']:
+            tracking['inside_geofence'] = False
+            tracking['penalty_start'] = time.time()  # Start penalty timer
+            return jsonify({"alert": "You have exited the geofence! Return within 10 minutes to avoid penalties."})
+
+        # Check if 10 minutes have passed
+        elif time.time() - tracking['penalty_start'] >= 600:  # 10 minutes = 600 seconds
+            tracking['cost_per_km'] = 20  # Apply penalty
+    else:
+        if not tracking['inside_geofence']:
+            tracking['inside_geofence'] = True
+            tracking['penalty_start'] = None
+            tracking['cost_per_km'] = 1.50  # Reset price
+
+    # Update distance and cost
+    if 'prev_lat' in tracking and 'prev_lon' in tracking:
+        distance = get_distance(tracking['prev_lat'], tracking['prev_lon'], lat, lon)
+        tracking['distance'] += distance
+        tracking['total_cost'] += distance * tracking['cost_per_km']
+
+    tracking['prev_lat'] = lat
+    tracking['prev_lon'] = lon
+
+    return jsonify({"status": "Tracking updated"})
+
+
+def get_distance(lat1, lon1, lat2, lon2):
+    from geopy.distance import geodesic
+    return geodesic((lat1, lon1), (lat2, lon2)).km
+
+import cv2
+from pyzbar.pyzbar import decode
+
+@app.route('/scan_qr_live')
+def scan_qr_live():
+    return render_template('scan_qr_live.html')
+
+@app.route('/process_qr', methods=['POST'])
+def process_qr():
+    try:
+        # Capture video from the webcam
+        cap = cv2.VideoCapture(0)
+        vehicle_id = None
+
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            qr_codes = decode(frame)
+            for qr_code in qr_codes:
+                vehicle_id = qr_code.data.decode('utf-8')
+                cap.release()
+                cv2.destroyAllWindows()
+                break
+
+            if vehicle_id:
+                break
+
+            # Display the frame
+            cv2.imshow('QR Code Scanner', frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
+        cap.release()
+        cv2.destroyAllWindows()
+
+        if not vehicle_id:
+            return jsonify({"success": False, "message": "No QR code detected"})
+
+        user_email = session.get('email_id')
+        if not user_email:
+            return jsonify({"success": False, "message": "User not logged in"})
+
+        # Check if the vehicle exists and is available
+        print(vehicle_id)
+        vehicle_id=int(vehicle_id)
+        cursor.execute("SELECT * FROM vehicle WHERE `v-id` = %s AND `status` = 'Available'", (vehicle_id,))
+        vehicle = cursor.fetchall()
+        print(vehicle)
+        if not vehicle:
+            return jsonify({"success": False, "message": "Vehicle not available or does not exist"})
+
+        # Start the ride (update vehicle status and create a new ride entry)
+        #cursor.execute("UPDATE vehicle SET `status` = 'in-use' WHERE `v-id` = %s", (vehicle_id,))
+        cursor.execute("""
+            INSERT INTO ride (`user-id`, `v-id`, `time`, `status`)
+            VALUES ((SELECT `user-id` FROM user WHERE email = %s), %s, NOW(), 'ongoing')
+        """, (user_email, vehicle_id))
+        db.commit()
+        # return redirect(url_for('location'))
+        #return render_template('location.html')
+        return jsonify({"success": True, "vehicle_id": vehicle_id})
+
+    except mysql.connector.Error as err:
+        print("MySQL Error:", err)
+        return jsonify({"success": False, "message": "Failed to start ride"})
+
+@app.route('/check_balance', methods=['POST'])
+def check_balance():
+    data = request.json
+    user_id = data['user_id']
+    vehicle_id = data['vehicle_id']
+
+    # Get the vehicle's battery percentage
+    cursor.execute("SELECT battery FROM vehicle WHERE `v-id` = %s", (vehicle_id,))
+    vehicle = cursor.fetchone()
+    if not vehicle:
+        return jsonify({"success": False, "message": "Vehicle not found"})
+
+    battery_percentage = vehicle['battery']
+    required_balance = battery_percentage * 2
+
+    # Check the user's wallet balance
+    cursor.execute("SELECT balance FROM wallet WHERE `user-id` = %s", (user_id,))
+    wallet = cursor.fetchone()
+    if not wallet:
+        return jsonify({"success": False, "message": "Wallet not found"})
+
+    if wallet['balance'] < required_balance:
+        return jsonify({"success": False, "message": f"Insufficient balance. You need at least ₹{required_balance} to start the ride."})
+
+    return jsonify({"success": True})
+
+@app.route('/start_ride', methods=['POST', 'GET'])
+def start_ride():
+    data = request.json
+    vehicle_id = data['vehicle_id']
+    cursor.execute("UPDATE vehicle SET `status` = 'in-use' WHERE `v-id` = %s", (vehicle_id,))
+    
+
+@app.route('/end_ride', methods=['POST'])
+def end_ride():
+    """Calculate cost and store in DB"""
+    data = request.json
+    user_id = data['user_id']
+    wallet_id = data['wallet_id']
+    vehicle_id = data['vehicle_id']
+    method = data['method']
+
+    if user_id not in user_tracking:
+        return jsonify({"error": "No tracking data found"}), 400
+
+    tracking = user_tracking[user_id]
+    total_distance = tracking['distance']
+    total_cost = tracking['total_cost']
+
+    cursor.execute("""
+        INSERT INTO transaction (`user-id`, `w-id`, `method`, `amount`)
+        VALUES (%s, %s, %s, %s)
+    """, (user_id, wallet_id, method, total_cost))
+
+    # Deduct the total cost from the user's wallet
+    cursor.execute("""
+        UPDATE wallet
+        SET balance = balance - %s
+        WHERE `w-id` = %s
+    """, (total_cost, wallet_id))
+
+    # Update vehicle status to "Available"
+    cursor.execute("UPDATE vehicle SET `status` = 'Available' WHERE `v-id` = %s", (vehicle_id,))
+
+    db.commit()
+
+    # Clear user tracking data
+    del user_tracking[user_id]
+
+    return jsonify({"message": "Ride ended", "total_cost": total_cost})
 
 @app.route('/wallet')
 def wallet():
@@ -421,242 +655,6 @@ def wallet():
 
     return render_template('wallet.html', user=user, wallet=wallet)
 
-@app.route('/add-vehicle', methods=['GET', 'POST'])
-def add_vehicle():
-    if request.method == 'POST':
-        reg_plate = request.form['reg_plate']
-        name = request.form['name']
-        battery = float(request.form['battery'])
-        station_id = int(request.form['station_id'])
-        status = request.form['status']
-
-        # Insert into database
-        query = "INSERT INTO vehicle (`reg-plate`, `name`, `battery`, `station-id`, `status`) VALUES (%s, %s, %s, %s, %s)"
-        cursor.execute(query, (reg_plate, name, battery, station_id, status))
-        db.commit()
-
-        return redirect('/add-vehicle')
-
-    return render_template('add_vehicle.html')
-
-@app.route('/location/<int:ride_id>')
-def location(ride_id):
-    return render_template('location.html', ride_id=ride_id)
-
-# Define geofence boundaries (example)
-GEOFENCE_CENTER = (23.15462, 72.66685)  # Example center coordinates
-GEOFENCE_RADIUS = 5000  # 5 km
-
-# Store tracking info
-user_tracking = {}
-
-def is_outside_geofence(lat, lon):
-    """Check if the user is outside geofence"""
-    from geopy.distance import geodesic
-    distance = geodesic((lat, lon), GEOFENCE_CENTER).km
-    return distance > (GEOFENCE_RADIUS / 1000)  # Convert meters to km
-
-@app.route('/track', methods=['POST'])
-def track_location():
-    """Track user location and apply penalty if needed"""
-    data = request.json
-    user_id = data['user_id']
-    lat, lon = data['lat'], data['lon']
-    
-    if user_id not in user_tracking:
-        user_tracking[user_id] = {
-            'start_time': time.time(),
-            'inside_geofence': True,
-            'penalty_start': None,
-            'distance': 0,
-            'total_cost': 0
-        }
-    
-    tracking = user_tracking[user_id]
-    
-    # Check if user is outside the geofence
-    if is_outside_geofence(lat, lon):
-        if tracking['inside_geofence']:
-            tracking['inside_geofence'] = False
-            tracking['penalty_start'] = time.time()  # Start penalty timer
-            return jsonify({"alert": "You have exited the geofence! Return within 10 minutes to avoid penalties."})
-
-        # Check if 10 minutes have passed
-        elif time.time() - tracking['penalty_start'] >= 600:  # 10 minutes = 600 seconds
-            tracking['cost_per_km'] = 20  # Apply penalty
-    else:
-        if not tracking['inside_geofence']:
-            tracking['inside_geofence'] = True
-            tracking['penalty_start'] = None
-            tracking['cost_per_km'] = 1.50  # Reset price
-
-    return jsonify({"status": "Tracking updated"})
-
-from datetime import datetime
-
-@app.route('/end_ride/<int:ride_id>', methods=['POST'])
-def end_ride(ride_id):
-    """Calculate cost, penalties, and store in DB"""
-    try:
-        data = request.json
-        user_id = session['user_id']
-        
-        if not data:
-            return jsonify({"error": "Invalid or missing JSON data"}), 400
-
-        total_penalty_from_location = data.get('total_penalty', 0)  # Get from location.html
-
-        # if user_id not in user_tracking:
-        #     return jsonify({"error": "No tracking data found"}), 400
-
-        # Retrieve tracking data
-        tracking = user_tracking[user_id]
-        total_distance = tracking['distance']
-
-        # Payment Calculation (₹10 per km)
-        base_payment = total_distance * 10
-
-        # Penalty Calculation
-        penalty = total_penalty_from_location
-
-        # Total Payment and Profit
-        total_payment = base_payment + penalty
-        total_profit = total_payment * 0.20
-
-        # Store Payment Data in Database
-        cursor.execute("""
-            SELECT * FROM ride WHERE `r-id` %s;
-        """, (ride_id))
-        ride = cursor.fetchone()
-        if not ride:
-            return jsonify({"error": "Ride not found"}), 404
-        
-        cursor.execute("""
-            INSERT INTO ride (`user-id`, `v-id`, `payment`, `profit`, `distance`)
-            VALUES (%s, %s, %s, %s, %s)
-        """, (user_id, ride['v-id'], total_payment, total_profit, total_distance))
-        db.commit()
-
-        cursor.execute("UPDATE vehicle SET status = 'Available' WHERE `v-id` = %s", (ride['v-id'],))
-        db.commit()
-
-        # Clear user tracking data
-        # del user_tracking[user_id]
-        user_tracking.pop(user_id, None)
-
-        return jsonify({
-            "message": "Ride ended successfully",
-            "total_distance": total_distance,
-            "base_payment": base_payment,
-            "penalty": penalty,
-            "total_payment": total_payment,
-            "total_profit": total_profit
-        })
-
-    except mysql.connector.Error as err:
-        print("MySQL Error:", err)
-        return jsonify({"error": "Database error"}), 500
-
-    except Exception as e:
-        print("Error:", e)
-        return jsonify({"error": "An unexpected error occurred"}), 500
-
-import cv2
-from pyzbar.pyzbar import decode
-
-@app.route('/scan_qr_live')
-def scan_qr_live():
-    vehicle_id = request.args.get('vehicle_id')
-    return render_template('scan_qr_live.html', vehicle_id=vehicle_id)
-
-@app.route('/process_qr/<int:clicked_vehicle_id>', methods=['POST'])
-def process_qr(clicked_vehicle_id):
-    cap = None
-    try:
-        # Start webcam capture
-        cap = cv2.VideoCapture(0)
-        if not cap.isOpened():
-            return jsonify({"success": False, "message": "Failed to access camera"})
-
-        vehicle_id = None
-        timeout = 15  # Set a 15-second timeout
-        start_time = cv2.getTickCount()
-
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                return jsonify({"success": False, "message": "Failed to read from camera"})
-
-            # Decode QR codes in the frame
-            qr_codes = decode(frame)
-            for qr_code in qr_codes:
-                vehicle_id = qr_code.data.decode('utf-8')
-                cap.release()
-                cv2.destroyAllWindows()
-                break
-
-            if vehicle_id:
-                break
-
-            # Display the frame with OpenCV
-            cv2.imshow('QR Code Scanner', frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-
-            # Check for timeout
-            elapsed_time = (cv2.getTickCount() - start_time) / cv2.getTickFrequency()
-            if elapsed_time > timeout:
-                return jsonify({"success": False, "message": "QR scan timed out. Please try again."})
-
-        if not vehicle_id:
-            return jsonify({"success": False, "message": "No QR code detected"})
-
-        # Ensure user is logged in
-        user_email = session.get('email_id')
-        if not user_email:
-            return jsonify({"success": False, "message": "User not logged in"})
-
-        # Validate QR Code and check vehicle availability
-        try:
-            vehicle_id = int(vehicle_id)
-            print(vehicle_id)
-            cursor.execute("SELECT * FROM vehicle WHERE `v-id` = %s AND status = 'Available'", (vehicle_id,))
-            vehicle = cursor.fetchone()
-            
-            print(vehicle)
-
-            if not vehicle:
-                return jsonify({"success": False, "message": "Vehicle not available or does not exist"})
-            
-            if vehicle_id != clicked_vehicle_id:
-                return jsonify({"success": False, "message": "Vehicle didn't match"})
-            
-            # Start the ride
-            cursor.execute("UPDATE vehicle SET status = 'in-use' WHERE `v-id` = %s", (vehicle_id,))
-            cursor.execute("""
-                INSERT INTO ride (`user-id`, `v-id`, time, status)
-                VALUES ((SELECT `user-id` FROM user WHERE email = %s), %s, NOW(), 'ongoing')
-            """, (user_email, vehicle_id))
-            db.commit()
-            
-            ride_id = cursor.lastrowid
-            print("Ride ID:", ride_id)
-
-            return jsonify({"success": True, "message": "Ride started successfully!", "ride_id":ride_id})
-
-        except mysql.connector.Error as err:
-            print("MySQL Error:", err)
-            return jsonify({"success": False, "message": "Failed to start ride. Please try again."})
-
-    except Exception as e:
-        print("Error:", str(e))
-        return jsonify({"success": False, "message": "An error occurred during QR scanning."})
-
-    finally:
-        # Ensure proper cleanup
-        if cap is not None:
-            cap.release()
-        cv2.destroyAllWindows()
 
 if __name__ == '__main__':
     app.run(debug=True)
