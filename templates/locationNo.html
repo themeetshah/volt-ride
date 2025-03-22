@@ -52,6 +52,10 @@
             background: #d32f2f;
             color: white;
         }
+        .simulation-btn {
+            background: #007bff;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -74,6 +78,8 @@
         <div class="buttons">
             <button class="start-btn" onclick="startTracking()">Start</button>
             <button class="stop-btn" onclick="stopTracking()">Stop</button>
+            <button class="simulation-btn" onclick="startSimulation()">Start Simulation</button>
+            <button class="simulation-btn" onclick="stopSimulation()">Stop Simulation</button>
         </div>
     </div>
 
@@ -119,6 +125,7 @@
         var vehicleId = 1; // Replace with actual vehicle ID
         var path = []; // Array to store the path coordinates
         var polyline = L.polyline(path, { color: 'blue' }).addTo(map); // Initialize the polyline
+        var simulationRunning = false; // Flag to indicate if simulation is running
 
         function isInsideGeofence(lat, lon) {
             var distance = map.distance([lat, lon], geofenceCenter); 
@@ -137,8 +144,22 @@
         }
 
         function startTracking() {
-            if (!navigator.geolocation) {
+            if (!navigator.geolocation && !simulationRunning) {
                 alert("Geolocation is not supported by your browser.");
+                return;
+            }
+
+            if (simulationRunning) {
+                tracking = true;
+                totalDistance = 0;
+                startPosition = null;
+                endPosition = null;
+                path = []; // Reset the path
+                polyline.setLatLngs(path); // Clear the polyline
+                document.getElementById("start").innerText = "Tracking...";
+                document.getElementById("end").innerText = "Tracking...";
+                document.getElementById("distance").innerText = "0.00 km";
+                document.getElementById("price").innerText = "₹0.00";
                 return;
             }
 
@@ -162,16 +183,6 @@
                         vehicle_id: vehicleId
                     })
                 })
-                // Start the ride
-                fetch('/start_ride', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            vehicle_id: vehicleId
-                        })
-                    })
                 .then(response => response.json())
                 .then(data => {
                     if (!data.success) {
@@ -312,6 +323,30 @@
 
         function handleError(error) {
             alert("Error getting location: " + error.message);
+        }
+
+        function startSimulation() {
+            fetch('/start_simulation')
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    simulationRunning = true;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+
+        function stopSimulation() {
+            fetch('/stop_simulation')
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    simulationRunning = false;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
         }
 
         // Start tracking location

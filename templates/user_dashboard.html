@@ -2,12 +2,14 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <title>Vehicle Details</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <title>Document</title>
     <style>
         /* Navbar Styling */
         .navbar-custom {
@@ -43,7 +45,6 @@
         body {
             background-color: #1E1E1E;
             color: white;
-            padding-top: 80px;
         }
 
         .search-container {
@@ -152,84 +153,59 @@
 </head>
 
 <body class="bg-dark text-white">
-    <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-custom fixed-top mx-4 mt-2">
         <div class="container-fluid">
-            <a class="navbar-brand" href="#"><i class="fas fa-bolt"></i> VoltRide</a>
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-bolt"></i> VoltRide
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span><i class="fas fa-bars" style="color: #00FF88;"></i></span>
+            </button>
             <div class="collapse navbar-collapse justify-content-center" id="navbarNav">
                 <ul class="navbar-nav">
                     <li class="nav-item"><a class="nav-link" href="/dashboard">Home</a></li>
                     <li class="nav-item"><a class="nav-link" href="/profile">Profile</a></li>
                     <li class="nav-item"><a class="nav-link" href="/wallet">Wallet</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/about">About</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/contact">Contact</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#">About</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#">Contact</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/scan_qr_live">Scan QR</a></li>
                 </ul>
             </div>
-            <a href="/logout" class="btn btn-success">Logout</a>
+            <div class="ms-auto">
+                <a href="/logout" class="btn logout-button"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
         </div>
     </nav>
-
-    <!-- Vehicle Details Section -->
     <div class="container mt-5">
-        <h2 class="text-primary"><i class="fas fa-car"></i> Vehicle Details</h2>
-
-        <!-- Search Form -->
-        <form method="post" class="d-flex my-3">
-            <select name="station_id" class="form-select me-2" style="width: 300px;">
-                <option value="" selected>All Stations</option>
-                {% for station in stations %}
-                <option value="{{ station['s-id'] }}">{{ station['name'] }}</option>
-                {% endfor %}
+        <div class="search-container">
+            <select id="stationSelect" class="form-select" style="width: 800px;">
+                <option value="" selected disabled>Select Station</option>
+                <option value="3">BAPS Swaminarayan Akshardham</option>
+                <option value="2">Mahatma Mandir</option>
+                <option value="1">Pdeu college</option>
             </select>
-            <button type="submit" class="btn btn-primary">Search</button>
-        </form>
-
-        <!-- Vehicle Table -->
+            <button class="btn btn-primary" id="searchBtn">Search Now</button>
+        </div>
         <div class="card bg-dark text-white">
             <div class="card-body">
+                <h2 class="text-primary"><i class="fas fa-car"></i> Vehicle Details</h2>
                 <table class="table table-dark table-hover">
                     <thead>
                         <tr>
                             <th>Vehicle ID</th>
-                            <th>Registration Plate</th>
                             <th>Model</th>
                             <th>Battery</th>
                             <th>Station</th>
-                            <th>Status</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {% if vehicles %}
-                        {% for vehicle in vehicles %}
-                        <tr>
-                            <td>{{ vehicle['v-id'] }}</td>
-                            <td>{{ vehicle['reg-plate'] }}</td>
-                            <td>{{ vehicle['name'] }}</td>
-                            <td>{{ vehicle['battery'] }}%</td>
-                            <td>{{ vehicle['station_name'] }}</td>
-                            <td>{{ vehicle['status'] }}</td>
-                            <td>
-                                <button class="btn btn-success btn-sm ride-now" data-bs-toggle="modal"
-                                    data-bs-target="#qrModal" data-vehicle-id="{{ vehicle['v-id'] }}">
-                                    Ride Now
-                                </button>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                        {% else %}
-                        <tr>
-                            <td colspan="7" class="text-center">No vehicles found.</td>
-                        </tr>
-                        {% endif %}
+                    <tbody id="vehicleTableBody">
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
-
-    <!-- QR Modal -->
-    <!-- QR Modal -->
     <div class="modal fade" id="qrModal" tabindex="-1" aria-labelledby="qrModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -238,11 +214,10 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body text-center">
-                    <p>Please scan the QR code to proceed with your ride.</p>
-                    <input type="hidden" id="vehicleId" />
+                    <p>Please click the button below to start scanning the QR code.</p>
+                    <a href="/scan_qr_live" class="btn btn-success">Start Scanning</a>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-success" onclick="redirectToScanQR()">Scan QR</button>
                     <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
@@ -250,23 +225,49 @@
     </div>
 
     <script>
-        document.querySelectorAll('.ride-now').forEach(button => {
-            button.addEventListener('click', function () {
-                const vehicleId = this.getAttribute('data-vehicle-id');
-                setVehicleId(vehicleId);
+        $(document).ready(function () {
+            $('#searchBtn').click(function () {
+                var selectedStation = $('#stationSelect').val();
+                var tableBody = $('#vehicleTableBody');
+                tableBody.empty();
+
+                if (selectedStation) {
+                    $.ajax({
+                        url: `/api/vehicles/${selectedStation}`,
+                        method: 'GET',
+                        success: function (data) {
+                            if (data.length > 0) {
+                                data.forEach(function (vehicle) {
+                                    tableBody.append(`
+                                        <tr>
+                                            <td>${vehicle['v-id']}</td>
+                                            <td>${vehicle.name}</td>
+                                            <td>${vehicle.battery}</td>
+                                            <td>${vehicle.station_name}</td>
+                                            <td><button class="btn btn-sm btn-success ride-now-btn" data-bs-toggle="modal" data-bs-target="#qrModal" data-vehicle-id="${vehicle['v-id']}">Ride Now</button></td>
+                                        </tr>
+                                    `);
+                                });
+                            } else {
+                                tableBody.append('<tr><td colspan="5">No vehicles available at this station</td></tr>');
+                            }
+                        },
+                        error: function () {
+                            tableBody.append('<tr><td colspan="5">Failed to fetch vehicle data</td></tr>');
+                        }
+                    });
+                } else {
+                    tableBody.append('<tr><td colspan="5">Please select a station</td></tr>');
+                }
+            });
+
+            // Set vehicle ID in the hidden input field when the "Ride Now" button is clicked
+            $(document).on('click', '.ride-now-btn', function () {
+                var vehicleId = $(this).data('vehicle-id');
+                $('#vehicle_id_input').val(vehicleId);
             });
         });
-
-        function setVehicleId(vehicleId) {
-            document.getElementById('vehicleId').value = vehicleId;
-        }
-
-        function redirectToScanQR() {
-            const vehicleId = document.getElementById('vehicleId').value;
-            window.location.href = `/scan_qr_live?vehicle_id=${vehicleId}`;
-        }
     </script>
-
 </body>
 
 </html>
