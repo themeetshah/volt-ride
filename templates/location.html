@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Trip Tracker with Geofencing</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #121212;
+            color: #ffffff;
+        }
+
+        .trip-details {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 10px;
+            background: #1b5e20;
+            border-top: 2px solid #388e3c;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            height: 60px;
+        }
+
+        .map-container {
+            width: 100%;
+            height: calc(100vh - 80px);
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .buttons button {
+            padding: 5px 10px;
+            font-size: 14px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .start-btn {
+            background: #388e3c;
+            color: white;
+        }
+
+        .stop-btn {
+            background: #d32f2f;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Map Section -->
+    <div class="map-container">
+        <div id="map"></div>
+    </div>
+
+    <!-- Trip Details Section -->
+    <div class="trip-details">
+        <div>
+            <p><strong>Start:</strong> <span id="start">Not Started</span></p>
+            <p><strong>End:</strong> <span id="end">Not Available</span></p>
+        </div>
+        <div>
+            <p><strong>Distance:</strong> <span id="distance">0.00 km</span></p>
+            <p><strong>Trip Price:</strong> ₹<span id="price">0.00</span></p>
+        </div>
+        <div>
+            <p><strong>Penalty:</strong> ₹<span id="penalty">0.00</span></p>
+            <p><strong>Total Payment:</strong> ₹<span id="total-payment">0.00</span></p>
+        </div>
+        <div class="buttons">
+            <button class="start-btn" onclick="startTracking()">Start</button>
+            <button class="stop-btn" onclick="stopTracking()">Stop</button>
+        </div>
+    </div>
+
+    <script>
+        var map = L.map('map').setView([23.2152, 72.6682], 12); // Centered on Ahmedabad
+
+        // OpenStreetMap tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        // User marker
+        var userMarker = L.marker([23.2152, 72.6682]).addTo(map).bindPopup("Fetching location...");
+
+        // Geofence Circle (10 km radius)
+        var geofenceCenter = [23.2152, 72.6682];
+        var geofenceRadius = 10000; // **10 km**
+        var geofenceCircle = L.circle(geofenceCenter, {
+            color: "red",
+            fillColor: "#f03",
+            fillOpacity: 0.3,
+            radius: geofenceRadius
+        }).addTo(map);
+
+        // Parking Station Markers
+        var parkingStations = [
+            { lat: 23.230786, lon: 72.675482, name: "BAPS Swaminarayan Akshardham" },
+            { lat: 23.232949, lon: 72.633181, name: "Mahatma Mandir" },
+            { lat: 23.155386, lon: 72.667103, name: "Pdeu college" }
+        ];
+
+        parkingStations.forEach(station => {
+            L.marker([station.lat, station.lon], { icon: L.icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png', iconSize: [32, 32] }) })
+                .addTo(map)
+                .bindPopup(`🚗 ${station.name}`);
+        });
+
+        var tracking = false;
+        var startPosition = null;
+        var endPosition = null;
+        var totalDistance = 0;
+        var prevPosition = null;
+
+        function isInsideGeofence(lat, lon) {
+            var distance = map.distance([lat, lon], geofenceCenter);
+            return distance <= geofenceRadius;
+        }
+
+        function startTracking() {
+            tracking = true;
+            totalDistance = 0;
+            startPosition = null;
+            endPosition = null;
+            document.getElementById("start").innerText = "Tracking...";
+            document.getElementById("end").innerText = "Tracking...";
+            document.getElementById("distance").innerText = "0.00 km";
+            document.getElementById("price").innerText = "₹0.00";
+        }
+
+        function stopTracking() {
+            tracking = false;
+            if (endPosition) {
+                document.getElementById("end").innerText = endPosition.lat.toFixed(5) + ", " + endPosition.lon.toFixed(5);
+                document.location.href = `/dashboard`;
+            }
+            alert("Tracking stopped! Total Distance: " + totalDistance.toFixed(2) + " km");
+            document.location.href = `/dashboard`;
+
+            // Send end ride request to server
+            fetch('/end_ride/{{ride_id}}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    // user_id: session['user_id'], // Replace with actual user ID
+                    // ride_id: ride_id
+                    total_penalty: document.getElementById('penalty')
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert("Ride ended successfully! Total Cost: ₹" + data.total_cost);
+                    } else {
+                        alert("Failed to end ride: " + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+
+        function updateLocation(position) {
+            var lat = position.coords.latitude;
+            var lon = position.coords.longitude;
+            var accuracy = position.coords.accuracy;
+
+            // Update user marker position
+            userMarker.setLatLng([lat, lon]).bindPopup(`📍 You are here!<br>🔹 Accuracy: ±${accuracy.toFixed(2)} meters`).openPopup();
+            map.setView([lat, lon], 12);
+
+            if (tracking) {
+                if (!startPosition) {
+                    startPosition = { lat: lat, lon: lon };
+                    document.getElementById("start").innerText = lat.toFixed(5) + ", " + lon.toFixed(5);
+                }
+
+                if (prevPosition) {
+                    var distance = getDistanceFromLatLonInKm(prevPosition.lat, prevPosition.lon, lat, lon);
+                    totalDistance += distance;
+                    document.getElementById("distance").innerText = totalDistance.toFixed(2) + " km";
+                    document.getElementById("price").innerText = "₹" + (totalDistance * 1.50).toFixed(2);
+
+                    // Send location update to server
+                    fetch('/track', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            user_id: 1, // Replace with actual user ID
+                            lat: lat,
+                            lon: lon
+                        })
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.alert) {
+                                alert(data.alert);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                        });
+                }
+
+                prevPosition = { lat: lat, lon: lon };
+                endPosition = { lat: lat, lon: lon };
+            }
+
+            // Geofence Check
+
+            // Geofence Check for Penalty
+            if (!isInsideGeofence(lat, lon)) {
+                totalPenalty += penaltyRate;
+                alert(`⚠️ You have exited the geofence! Penalty Applied: ₹${penaltyRate.toFixed(2)}`);
+                updatePriceAndPenalty();
+            }
+        }
+
+        // Constants for pricing and penalty
+        const pricePerKm = 1.50; // ₹ per km
+        const penaltyRate = 5.00; // ₹ penalty for going outside the geofence
+
+        // Track penalty
+        let totalPenalty = 0;
+
+        function updatePriceAndPenalty() {
+            // Calculate total trip price
+            const tripPrice = totalDistance * pricePerKm;
+
+            // Calculate final total (with penalties)
+            const totalPayment = tripPrice + totalPenalty;
+
+            // Update UI
+            document.getElementById("price").innerText = `₹${tripPrice.toFixed(2)}`;
+            document.getElementById("penalty").innerText = `₹${totalPenalty.toFixed(2)}`;
+            document.getElementById("total-payment").innerText = `₹${totalPayment.toFixed(2)}`;
+        }
+
+        function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+            var R = 6371; // Radius of the Earth in km
+            var dLat = deg2rad(lat2 - lat1);
+            var dLon = deg2rad(lon2 - lon1);
+            var a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            var d = R * c; // Distance in km
+            return d;
+        }
+
+        function deg2rad(deg) {
+            return deg * (Math.PI / 180);
+        }
+
+        function handleError(error) {
+            if (error.code === error.PERMISSION_DENIED) {
+                alert("Location access denied. Ending the ride.");
+                stopTracking();
+            } else {
+                alert("Error getting location: " + error.message);
+            }
+        }
+
+        // Start tracking location
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition(updateLocation, handleError, {
+                enableHighAccuracy: true,
+                timeout: 5000,
+                maximumAge: 0
+            });
+        } else {
+            alert("Geolocation is not supported by your browser.");
+        }
+    </script>
+</body>
+
+</html>

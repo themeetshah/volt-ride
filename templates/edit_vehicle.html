@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Edit Vehicle - VoltRide</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+    <style>
+        body {
+            background-color: #1E1E1E;
+            color: #FFFFFF;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        h2 {
+            color: #00D4FF;
+            text-align: center;
+            margin-top: 40px;
+        }
+
+        form {
+            background-color: rgba(0, 0, 0, 0.7);
+            border-radius: 12px;
+            padding: 30px;
+            width: 80%;
+            max-width: 500px;
+            margin: 20px auto;
+            box-shadow: 0 8px 16px rgba(0, 212, 255, 0.2);
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #00FF88;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 16px;
+            background-color: #333;
+            border: 1px solid #00D4FF;
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+        }
+
+        select {
+            cursor: pointer;
+        }
+
+        button {
+            background-color: #00FF88;
+            color: #1E1E1E;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            width: 100%;
+        }
+
+        button:hover {
+            background-color: #00D4FF;
+            color: #1E1E1E;
+        }
+
+        a {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            color: #00D4FF;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Edit Vehicle</h2>
+    <form method="post">
+        <label>Registration Plate:</label>
+        <input type="text" name="reg_plate" value="{{ vehicle['reg-plate'] }}" required />
+
+        <label>Vehicle Name:</label>
+        <input type="text" name="name" value="{{ vehicle['name'] }}" required />
+
+        <label>Battery (%):</label>
+        <input type="number" name="battery" min="0" max="100" value="{{ vehicle['battery'] }}" required />
+
+        <label>Station:</label>
+        <select name="station_id" required>
+            {% for station in stations %}
+            <option value="{{ station['station-id'] }}" {% if station['station-id']==vehicle['station-id'] %} selected
+                {% endif %}>
+                {{ station['name'] }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <label>Status:</label>
+        <select name="status" required>
+            <option value="Available" {% if vehicle['status']=='Available' %} selected {% endif %}>Available</option>
+            <option value="Occupied" {% if vehicle['status']=='Occupied' %} selected {% endif %}>Occupied</option>
+            <option value="Charging" {% if vehicle['status']=='Charging' %} selected {% endif %}>Charging</option>
+        </select>
+
+        <button type="submit">Update Vehicle</button>
+    </form>
+
+    <a href="{{ url_for('vehicles') }}">Back to Vehicles</a>
+</body>
+
+</html>

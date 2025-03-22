@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <title>Document</title>
+    <style>
+        /* Navbar Styling */
+        .navbar-custom {
+            background-color: #252525;
+            border-radius: 30px;
+            padding: 10px 20px;
+            box-shadow: 0px 2px 10px rgb(0, 255, 136, 0.2);
+        }
+
+        .navbar-brand,
+        .navbar-nav .nav-link {
+            color: #00FF88 !important;
+            font-size: 16px;
+            transition: color 0.3s;
+        }
+
+        .navbar-nav .nav-link:hover {
+            color: #00D4FF !important;
+        }
+
+        .logout-button {
+            border-radius: 20px;
+            background-color: #01cd6e;
+            color: white;
+            padding: 10px 20px;
+            transition: background-color 0.3s;
+        }
+
+        .logout-button:hover {
+            background-color: #00D4FF;
+        }
+
+        body {
+            background-color: #1E1E1E;
+            color: white;
+        }
+
+        .search-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin: 100px;
+        }
+
+        .dropdown-menu {
+            background-color: #252525;
+            color: white;
+        }
+
+        .dropdown-item:hover {
+            background-color: #00FF88;
+            color: black;
+        }
+
+        .vehicle-details {
+            display: none;
+            background-color: #252525;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .card {
+            background-color: #FFFFFF;
+            /* Darker background for the card */
+            border: 1px solid #00FF88;
+            /* Neon green border for contrast */
+            color: #FFFFFF;
+            /* White text for readability */
+        }
+
+        .card h2 {
+            color: #00D4FF;
+            /* Bright blue for headings */
+        }
+
+        .table-dark {
+            background-color: #333333;
+            /* Slightly lighter dark background for the table */
+            color: #FFFFFF;
+            /* White text for table content */
+        }
+
+        .table-dark th {
+            background-color: #444444;
+            /* Darker background for table headers */
+            color: #00FF88;
+            /* Neon green text for headers */
+        }
+
+        .table-dark tbody tr:hover {
+            background-color: #00FF88;
+            /* Neon green hover effect */
+            color: #000000;
+            /* Black text on hover */
+        }
+
+        .btn-success {
+            background-color: #00FF88;
+            /* Neon green button */
+            border-color: #00FF88;
+            color: #000000;
+            /* Black text */
+        }
+
+        .btn-success:hover {
+            background-color: #00D4FF;
+            /* Bright blue hover effect */
+            border-color: #00D4FF;
+            color: #000000;
+            /* Black text */
+        }
+
+        .modal-content {
+            background-color: #2C2C2C;
+            /* Dark background for the modal */
+            color: #FFFFFF;
+            /* White text for readability */
+            border: 1px solid #00FF88;
+            /* Neon green border */
+        }
+
+        .modal-header {
+            border-bottom: 1px solid #00FF88;
+        }
+
+        .modal-footer {
+            border-top: 1px solid #00FF88;
+        }
+
+        .btn-close {
+            color: #FFFFFF;
+            /* White close button */
+        }
+
+        .btn-close:hover {
+            color: #00FF88;
+            /* Neon green on hover */
+        }
+    </style>
+</head>
+
+<body class="bg-dark text-white">
+    <nav class="navbar navbar-expand-lg navbar-custom fixed-top mx-4 mt-2">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-bolt"></i> VoltRide
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span><i class="fas fa-bars" style="color: #00FF88;"></i></span>
+            </button>
+            <div class="collapse navbar-collapse justify-content-center" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item"><a class="nav-link" href="/dashboard">Home</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/profile">Profile</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/wallet">Wallet</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/about">About</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#">Contact</a></li>
+                </ul>
+            </div>
+            <div class="ms-auto">
+                <a href="/logout" class="btn logout-button"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+        </div>
+    </nav>
+    <div class="container mt-5">
+        <div class="search-container">
+            <select id="stationSelect" class="form-select" style="width: 800px;">
+                <option value="" selected disabled>Select Station</option>
+                <option value="station1">BAPS Swaminarayan Akshardham</option>
+                <option value="station2">Mahatma Mandir</option>
+                <option value="station3">Pdeu college</option>
+            </select>
+            <button class="btn btn-primary" id="searchBtn">Search Now</button>
+        </div>
+        <div class="card bg-dark text-white">
+            <div class="card-body">
+                <h2 class="text-primary"><i class="fas fa-car"></i> Vehicle Details</h2>
+                <table class="table table-dark table-hover">
+                    <thead>
+                        <tr>
+                            <th>Vehicle ID</th>
+                            <th>Model</th>
+                            <th>Battery</th>
+                            <th>Station</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="vehicleTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="qrModal" tabindex="-1" aria-labelledby="qrModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="qrModalLabel">Scan QR Code</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <p>Please scan the QR code to proceed with your ride.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" onclick="window.location.href='/scan_qr_live'">Scan
+                        QR</button>
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function () {
+            $('#searchBtn').click(function () {
+                var selectedStation = $('#stationSelect').val();
+                var vehicleData = {
+                    "station1": [{ id: "EV-201", model: "Ola S1 Pro", battery: "85%", station: "BAPS Swaminarayan Akshardham" }],
+                    "station2": [{ id: "EV-202", model: "Ather 450X", battery: "72%", station: "Mahatma Mandir" }],
+                    "station3": [{ id: "EV-203", model: "TVS iQube", battery: "60%", station: "Pdeu college" }]
+                };
+
+                var tableBody = $('#vehicleTableBody');
+                tableBody.empty();
+
+                if (selectedStation && vehicleData[selectedStation]) {
+                    // Display vehicles for the selected station
+                    vehicleData[selectedStation].forEach(function (vehicle) {
+                        tableBody.append(`
+                    <tr>
+                        <td>${vehicle.id}</td>
+                        <td>${vehicle.model}</td>
+                        <td>${vehicle.battery}</td>
+                        <td>${vehicle.station}</td>
+                        <td><button class="btn btn-sm btn-success ride-now-btn" data-bs-toggle="modal" data-bs-target="#qrModal">Ride Now</button></td>
+                    </tr>
+                `);
+                    });
+                } else {
+                    // Display all vehicles if no station is selected
+                    Object.values(vehicleData).flat().forEach(function (vehicle) {
+                        tableBody.append(`
+                    <tr>
+                        <td>${vehicle.id}</td>
+                        <td>${vehicle.model}</td>
+                        <td>${vehicle.battery}</td>
+                        <td>${vehicle.station}</td>
+                        <td><button class="btn btn-sm btn-success ride-now-btn" data-bs-toggle="modal" data-bs-target="#qrModal">Ride Now</button></td>
+                    </tr>
+                `);
+                    });
+                }
+            });
+        });
+    </script>
+
+</body>
+
+</html>

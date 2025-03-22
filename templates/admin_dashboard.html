@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VoltRide Admin Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        body,
+        html {
+            background-color: #1E1E1E;
+            color: #FFFFFF;
+            height: 100vh;
+        }
+
+        /* Navbar Styling */
+        .navbar-custom {
+            background-color: #252525;
+            border-radius: 30px;
+            padding: 10px 20px;
+            box-shadow: 0px 2px 10px rgb(0, 255, 136, 0.2);
+        }
+
+        .navbar-brand,
+        .navbar-nav .nav-link {
+            color: #00FF88 !important;
+            font-size: 16px;
+            transition: color 0.3s;
+        }
+
+        .navbar-nav .nav-link:hover {
+            color: #00D4FF !important;
+        }
+
+        .logout-button {
+            border-radius: 20px;
+            background-color: #01cd6e;
+            color: white;
+            padding: 10px 20px;
+            transition: background-color 0.3s;
+        }
+
+        .logout-button:hover {
+            background-color: #00D4FF;
+        }
+
+        /* Dashboard Styling */
+        .container-dashboard {
+            padding: 60px 20px;
+        }
+
+        .card {
+            background: rgba(37, 37, 37, 0.7);
+            /* Semi-transparent glass effect */
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            /* Frosted Glass Effect */
+            -webkit-backdrop-filter: blur(10px);
+            /* Safari Support */
+            color: #FFFFFF;
+            transition: transform 0.3s ease-in-out, box-shadow 0.3s ease;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            transform: scale(1.02);
+            box-shadow: 0px 5px 20px rgba(0, 255, 136, 0.4);
+        }
+
+        .card-title {
+            color: #00FF88;
+        }
+
+        .btn-custom {
+            background-color: #01cd6e;
+            color: white;
+            border: none;
+            transition: background-color 0.3s;
+        }
+
+        .btn-custom:hover {
+            background-color: #00D4FF;
+        }
+
+        /* Responsive Card Grid */
+        @media (max-width: 768px) {
+            .container-dashboard .card {
+                margin-bottom: 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-custom fixed-top mx-4 mt-2">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-bolt"></i> VoltRide
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span><i class="fas fa-bars" style="color: #00FF88;"></i></span>
+            </button>
+            <div class="collapse navbar-collapse justify-content-center" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item"><a class="nav-link" href="/dashboard">Home</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#">Access</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#">Pricing</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/about">About</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#">Contact</a></li>
+                </ul>
+            </div>
+            <div class="ms-auto">
+                <a href="/logout" class="btn logout-button"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Dashboard Content -->
+    <div class="container-dashboard container mt-5">
+        <div class="row g-4">
+            <!-- Card: Vehicle Details -->
+            <div class="col-md-4">
+                <div class="card p-4">
+                    <h5 class="card-title"><i class="fas fa-car"></i> Vehicle Details</h5>
+                    <p class="card-text">View and manage all registered vehicles.</p>
+                    <a href="/vehicle" class="btn btn-custom">View Details</a>
+                </div>
+            </div>
+
+            <!-- Card: Station Details -->
+            <div class="col-md-4">
+                <div class="card p-4">
+                    <h5 class="card-title"><i class="fas fa-charging-station"></i> Station Details</h5>
+                    <p class="card-text">Monitor station availability and details.</p>
+                    <a href="/station" class="btn btn-custom">Check Stations</a>
+                </div>
+            </div>
+
+            <!-- Card: Battery Status -->
+            <div class="col-md-4">
+                <div class="card p-4">
+                    <h5 class="card-title"><i class="fas fa-battery-full"></i> Battery Status</h5>
+                    <p class="card-text">Check battery levels of all vehicles at stations.</p>
+                    <a href="/station" class="btn btn-custom">View Status</a>
+                </div>
+            </div>
+
+            <!-- Card: Add Vehicle -->
+            <div class="col-md-4">
+                <div class="card p-4">
+                    <h5 class="card-title"><i class="fas fa-plus-circle"></i> Add Vehicle</h5>
+                    <p class="card-text">Register new vehicles in the system.</p>
+                    <a href="/add-vehicle" class="btn btn-custom">Add Now</a>
+                </div>
+            </div>
+
+            <!-- Card: Remove Vehicle -->
+            <div class="col-md-4">
+                <div class="card p-4">
+                    <h5 class="card-title"><i class="fas fa-minus-circle"></i> Remove Vehicle</h5>
+                    <p class="card-text">Remove outdated or non-functional vehicles.</p>
+                    <a href="/vehicle" class="btn btn-custom">Remove Now</a>
+                </div>
+            </div>
+
+            <!-- Card: Update Charging Status
+            <div class="col-md-4">
+                <div class="card p-4">
+                    <h5 class="card-title"><i class="fas fa-plug"></i> Charging Status</h5>
+                    <p class="card-text">Update vehicle charging status in real-time.</p>
+                    <a href="#" class="btn btn-custom">Update Now</a>
+                </div>
+            </div> -->
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

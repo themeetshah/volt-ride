@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>User Profile - VoltRide</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet" />
+    <style>
+        body {
+            background-color: #1E1E1E;
+            color: white;
+            padding-top: 80px;
+        }
+
+        /* Navbar Styling */
+        .navbar-custom {
+            background-color: #252525;
+            border-radius: 30px;
+            padding: 10px 20px;
+            box-shadow: 0px 2px 10px rgb(0, 255, 136, 0.2);
+        }
+
+        .navbar-brand,
+        .navbar-nav .nav-link {
+            color: #00FF88 !important;
+            font-size: 16px;
+            transition: color 0.3s;
+        }
+
+        .navbar-nav .nav-link:hover {
+            color: #00D4FF !important;
+        }
+
+        .logout-button {
+            border-radius: 20px;
+            background-color: #01cd6e;
+            color: white;
+            padding: 10px 20px;
+            transition: background-color 0.3s;
+        }
+
+        .logout-button:hover {
+            background-color: #00D4FF;
+        }
+
+        /* Theme Colors */
+        :root {
+            --primary-color: #00D4FF;
+            --secondary-color: #00FF88;
+            --background-color: #1E1E1E;
+            --text-color: #FFFFFF;
+            --card-bg: rgba(255, 255, 255, 0.08);
+            --border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        h2,
+        h3,
+        h5 {
+            color: var(--primary-color);
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .profile-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            padding: 40px;
+            border-radius: 20px 20px 0 0;
+            text-align: center;
+        }
+
+        .profile-header h2 {
+            font-size: 2.5rem;
+            color: var(--background-color);
+        }
+
+        .profile-header p {
+            font-size: 1.2rem;
+            color: var(--background-color);
+        }
+
+        .profile-info {
+            padding: 20px;
+        }
+
+        .profile-info h5 {
+            color: #00FF88;
+        }
+
+        .profile-info p {
+            color: white;
+        }
+
+        .badge {
+            font-size: 0.9rem;
+            padding: 8px 12px;
+            border-radius: 20px;
+        }
+
+        .badge-success {
+            background-color: #28a745;
+        }
+
+        .badge-warning {
+            background-color: #ffc107;
+            color: #000;
+        }
+
+        .badge-danger {
+            background-color: #dc3545;
+        }
+
+        table {
+            color: var(--text-color);
+            border-collapse: collapse;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        th {
+            background-color: var(--primary-color);
+            color: var(--background-color);
+        }
+
+        tr {
+            background-color: var(--card-bg);
+        }
+
+        tr:hover {
+            background-color: rgba(0, 212, 255, 0.2);
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-custom fixed-top mx-4 mt-2">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-bolt"></i> VoltRide
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span><i class="fas fa-bars" style="color: #00FF88;"></i></span>
+            </button>
+            <div class="collapse navbar-collapse justify-content-center" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item"><a class="nav-link" href="/dashboard">Home</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/profile">Profile</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/wallet">Wallet</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/about">About</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#">Contact</a></li>
+                </ul>
+            </div>
+            <div class="ms-auto">
+                <a href="/logout" class="btn logout-button"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+        </div>
+    </nav>
+    <div class="container mt-5">
+        <!-- User Profile Section -->
+        <div class="card">
+            <div class="profile-header">
+                <h2>{{ user['first-name'] }} {{ user['last-name'] }}</h2>
+                <p>{{ user.email }}</p>
+            </div>
+            <div class="profile-info">
+                <h5 class="card-title">User Details:</h5>
+                <p><strong>Mobile:</strong> {{ user.mobile }}</p>
+                <p class="mt-0 pt-0"><strong>Licence Number:</strong> {{ user['licence-number'] }}</p>
+            </div>
+        </div>
+
+        <!-- Ride History Section -->
+        <h3 class="mt-5">Ride History</h3>
+        {% if rides %}
+        <div class="table-responsive">
+            <table class="table table-dark table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Ride ID</th>
+                        <th>Time</th>
+                        <th>Date</th>
+                        <!-- <th>Status</th> -->
+                        <th>Payment (₹)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ride in rides %}
+                    <tr>
+                        <td>{{ ride['r-id'] }}</td>
+                        <td>{{ ride.time }}</td>
+                        <td>{{ ride.date }}</td>
+                        <!-- <td>
+                            {% if ride.status.lower() == 'completed' %}
+                            <span class="badge badge-success">Completed</span>
+                            {% elif ride.status.lower() == 'pending' %}
+                            <span class="badge badge-warning">Pending</span>
+                            {% else %}
+                            <span class="badge badge-danger">Cancelled</span>
+                            {% endif %}
+                        </td> -->
+                        <td>₹{{ ride.payment }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted">No rides found.</p>
+        {% endif %}
+    </div>
+</body>
+
+</html>
