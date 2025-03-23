@@ -243,7 +243,7 @@
                     <!-- <li class="nav-item"><a class="nav-link" href="#">Access</a></li>
                     <li class="nav-item"><a class="nav-link" href="#">Pricing</a></li> -->
                     <li class="nav-item"><a class="nav-link" href="/about">About</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#">Contact</a></li>
+                    <!-- <li class="nav-item"><a class="nav-link" href="#">Contact</a></li> -->
                 </ul>
             </div>
             <div class="ms-auto">
@@ -326,19 +326,19 @@
         <div class="row mt-4 justify-content-center">
             <!-- Scan QR Code or RFID Button -->
             <div class="col-md-4">
-                <button class="btn btn-success btn-lg w-100 py-3" onclick="scanQRCode()">
+                <!-- <button class="btn btn-success btn-lg w-100 py-3" onclick="scanQRCode()"> -->
+                <button class="btn btn-success btn-lg w-100 py-3" onclick="window.location.href='/login'">
                     <i class="fas fa-qrcode"></i> Scan QR Code
                 </button>
             </div>
-            <div class="col-md-2 d-flex align-items-center justify-content-center">
+            <!-- <div class="col-md-2 d-flex align-items-center justify-content-center">
                 <div class="vr-line"></div>
             </div>
-            <!-- Advance Booking Button -->
             <div class="col-md-4">
                 <button class="btn btn-primary btn-lg w-100 py-3" onclick="advanceBooking()">
                     <i class="fas fa-calendar-alt"></i> Advance Booking
                 </button>
-            </div>
+            </div> -->
         </div>
     </section>
 
@@ -550,7 +550,7 @@
             let evEfficiency = vehicle === 'car' ? 6 : 40; // km per kWh
             let petrolEfficiency = vehicle === 'car' ? 15 : 40; // km per liter
 
-            let evCost = (distance / evEfficiency) * 6; // ₹6 per kWh
+            let evCost = (distance) * 1.5; // ₹6 per kWh
             let petrolCost = (distance / petrolEfficiency) * 100; // ₹100 per liter
 
             document.getElementById("evCost").innerText = Math.round(evCost);

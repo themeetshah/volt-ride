@@ -143,7 +143,7 @@
             document.getElementById("start").innerText = "Tracking...";
             document.getElementById("end").innerText = "Tracking...";
             document.getElementById("distance").innerText = "0.00 km";
-            document.getElementById("price").innerText = "₹0.00";
+            document.getElementById("price").innerText = "0.00";
         }
 
         function stopTracking() {
@@ -164,13 +164,16 @@
                 body: JSON.stringify({
                     // user_id: session['user_id'], // Replace with actual user ID
                     // ride_id: ride_id
-                    total_penalty: document.getElementById('penalty')
+                    total_penalty: parseFloat(document.getElementById('penalty').innerText.trim()) || 0,
+                    total_distance: parseFloat(document.getElementById('distance').innerText.trim()),
+                    base_payment: parseFloat(document.getElementById('price').innerText.trim()) || 0
                 })
             })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
                         alert("Ride ended successfully! Total Cost: ₹" + data.total_cost);
+                        document.location.href = `/dashboard`;
                     } else {
                         alert("Failed to end ride: " + data.message);
                     }
@@ -199,7 +202,7 @@
                     var distance = getDistanceFromLatLonInKm(prevPosition.lat, prevPosition.lon, lat, lon);
                     totalDistance += distance;
                     document.getElementById("distance").innerText = totalDistance.toFixed(2) + " km";
-                    document.getElementById("price").innerText = "₹" + (totalDistance * 1.50).toFixed(2);
+                    document.getElementById("price").innerText = (totalDistance * 1.50).toFixed(2);
 
                     // Send location update to server
                     fetch('/track', {
@@ -253,9 +256,9 @@
             const totalPayment = tripPrice + totalPenalty;
 
             // Update UI
-            document.getElementById("price").innerText = `₹${tripPrice.toFixed(2)}`;
-            document.getElementById("penalty").innerText = `₹${totalPenalty.toFixed(2)}`;
-            document.getElementById("total-payment").innerText = `₹${totalPayment.toFixed(2)}`;
+            document.getElementById("price").innerText = `${tripPrice.toFixed(2)}`;
+            document.getElementById("penalty").innerText = `${totalPenalty.toFixed(2)}`;
+            document.getElementById("total-payment").innerText = `${totalPayment.toFixed(2)}`;
         }
 
         function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
