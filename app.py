@@ -260,7 +260,7 @@ def login():
                 if role == 'master':
                     return render_template('admin_dashboard.html')
                 elif role == 'user':
-                    return render_template('user_dashboard.html')
+                    return redirect(url_for('vehicles'))
         else:
             print(user)
             return render_template('error.html', message="Invalid email or password")
@@ -494,72 +494,94 @@ def track_location():
 
 from datetime import datetime
 
+import traceback
+
 @app.route('/end_ride/<int:ride_id>', methods=['POST'])
 def end_ride(ride_id):
-    """Calculate cost, penalties, and store in DB"""
     try:
-        data = request.json
-        user_id = session['user_id']
+        print(f"Received end_ride request for ride_id: {ride_id}")
         
-        if not data:
-            return jsonify({"error": "Invalid or missing JSON data"}), 400
+        data = request.json
+        user_id = session.get('user_id')
 
-        total_penalty_from_location = data.get('total_penalty', 0)  # Get from location.html
+        if not data or user_id is None:
+            print("Invalid or missing data or user_id")
+            return jsonify({"error": "Invalid data or session"}), 400
+        
+        print("Data:", data)
+
+        total_penalty_from_location = data.get('total_penalty')
 
         # if user_id not in user_tracking:
+        #     print("No tracking data for user:", user_id)
         #     return jsonify({"error": "No tracking data found"}), 400
 
-        # Retrieve tracking data
-        tracking = user_tracking[user_id]
-        total_distance = tracking['distance']
+        # Fetch tracking data
+        # tracking = user_tracking[user_id]
+        total_distance = data.get('total_distance')
+        print(f"User Tracking Data: Distance={total_distance}")
 
-        # Payment Calculation (₹10 per km)
-        base_payment = total_distance * 10
-
-        # Penalty Calculation
-        penalty = total_penalty_from_location
-
-        # Total Payment and Profit
-        total_payment = base_payment + penalty
+        # Calculate Payments
+        base_payment = data.get('base_payment')
+        print(type(base_payment), type(total_distance), type(total_penalty_from_location))
+        total_payment = base_payment + total_penalty_from_location
         total_profit = total_payment * 0.20
+        print(f"Base Payment: {base_payment}, Penalty: {total_penalty_from_location}, Total Payment: {total_payment}")
 
-        # Store Payment Data in Database
-        cursor.execute("""
-            SELECT * FROM ride WHERE `r-id` %s;
-        """, (ride_id))
+        # Fetch Ride Data
+        cursor.execute("SELECT * FROM ride WHERE `r-id` = %s;", (ride_id,))
         ride = cursor.fetchone()
+
         if not ride:
+            print("Ride not found for ride_id:", ride_id)
             return jsonify({"error": "Ride not found"}), 404
-        
+
+        print("Ride Data:", ride)
+
+        # Update Ride Data
         cursor.execute("""
-            INSERT INTO ride (`user-id`, `v-id`, `payment`, `profit`, `distance`)
-            VALUES (%s, %s, %s, %s, %s)
-        """, (user_id, ride['v-id'], total_payment, total_profit, total_distance))
+            UPDATE ride
+            SET `payment`=%s, `profit`=%s, `distance`=%s
+            WHERE `r-id`=%s;
+        """, (total_payment, total_profit, total_distance, ride['r-id']))
         db.commit()
 
-        cursor.execute("UPDATE vehicle SET status = 'Available' WHERE `v-id` = %s", (ride['v-id'],))
+        cursor.execute("""
+            SELECT * from wallet where `user-id`=%s;
+        """, (user_id,))
+        wallet = (cursor.fetchone())['amount']
+
+        wallet-=total_payment
+        cursor.execute("""
+            UPDATE wallet SET amount=%s where `user-id`=%s;
+        """, (wallet, user_id,))
+        wallet = cursor.fetchone()
+        # Update Vehicle Status
+        cursor.execute("UPDATE vehicle SET status = 'Available' WHERE `v-id` = %s;", (ride['v-id'],))
         db.commit()
 
-        # Clear user tracking data
-        # del user_tracking[user_id]
+        print(f"Ride {ride_id} ended. Payment: {total_payment}, Profit: {total_profit}")
+
         user_tracking.pop(user_id, None)
 
         return jsonify({
             "message": "Ride ended successfully",
             "total_distance": total_distance,
             "base_payment": base_payment,
-            "penalty": penalty,
+            "penalty": total_penalty_from_location,
             "total_payment": total_payment,
             "total_profit": total_profit
         })
 
     except mysql.connector.Error as err:
         print("MySQL Error:", err)
-        return jsonify({"error": "Database error"}), 500
+        traceback.print_exc()
+        return jsonify({"error": str(err)}), 500
 
     except Exception as e:
-        print("Error:", e)
-        return jsonify({"error": "An unexpected error occurred"}), 500
+        print("Unexpected Error:", e)
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
 import cv2
 from pyzbar.pyzbar import decode
@@ -657,6 +679,26 @@ def process_qr(clicked_vehicle_id):
         if cap is not None:
             cap.release()
         cv2.destroyAllWindows()
+        
+@app.route('/add-funds', methods=['GET', 'POST'])
+def add_funds():
+    if request.method == 'POST':
+        user_id = session.get('user_id')
+        amount = float(request.form.get('amount', 0))
+
+        if amount <= 0:
+            flash('Invalid amount. Please enter a positive value.', 'error')
+            return redirect('/add-funds')
+
+        # Update user balance in database
+        cursor.execute('UPDATE wallet SET amount = amount + %s WHERE `user-id` = %s', (amount, user_id))
+        db.commit()
+
+        flash(f'₹{amount:.2f} added to your account successfully!', 'success')
+        return redirect('/wallet')
+
+    return render_template('add_funds.html')
+
 
 if __name__ == '__main__':
     app.run(debug=True)
