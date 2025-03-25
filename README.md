@@ -28,7 +28,7 @@ VoltRide is a smart and efficient ride management platform designed for electric
 - **Frontend:** HTML, CSS, JavaScript (Bootstrap)  
 - **Backend:** Flask (Python)  
 - **Database:** MySQL (XAMPP)  
-- **Authentication:** Gmail OTP (via Twilio)  
+- **Authentication:** Gmail OTP (via SMTP)  
 
 ---
 
